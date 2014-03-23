@@ -1,11 +1,8 @@
-module-database
-===============
+module-template-engine-closure
+==============================
 
-This module contains the interfaces for database modules. Currently, these are not yet plugins, due to limitations of the DI system.
+Contains the Core9 Module to connect to the Closure Template engine.
 
 TODO
 ====
-This module should be:
-
-- An interface for any database connection
-- Injected into other modules without any problems
+This module should be more dynamic, strict division between API and IMPL.
