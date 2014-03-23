@@ -21,5 +21,5 @@ task publishBintray (type: org._10ne.gradle.rest.RestTask, dependsOn: bintrayUpl
 
 dependencies {
 	apiCompile 'io.core9:core-api:+'
-	implCompile 'io.core9:closure-templates:+'
+	apiCompile 'io.core9:closure-templates:+' //TODO should move to impl
 }
