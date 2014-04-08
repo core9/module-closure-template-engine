@@ -64,7 +64,8 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		}
 
 		for (Map.Entry<String,String> template : templateStringCollection.entrySet()) {
-			if(template.getValue() != null){
+			if(template.getValue() != null && validateTemplate(template)){
+				
 				System.out.println("Adding to Soy templates build collection : " + template.getKey());
 				buildCollection.add(template.getValue(), template.getKey());
 			}
@@ -77,8 +78,20 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		} catch (SoySyntaxException e) {
 			tofu = orgTofo;
 			e.printStackTrace();
-			throw e;
+			//throw e;
 		}
+	}
+
+	private boolean validateTemplate(Map.Entry<String, String> template) {
+		String keys = template.getKey();
+		String[] space = keys.split("\\.");
+		for (String key : space) {
+			if(key.equals("null")){
+				System.out.println("Not adding : " + keys);
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
