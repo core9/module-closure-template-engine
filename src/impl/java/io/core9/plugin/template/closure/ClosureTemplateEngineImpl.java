@@ -78,7 +78,7 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		} catch (SoySyntaxException e) {
 			tofu = orgTofo;
 			e.printStackTrace();
-			//throw e;
+			throw e;
 		}
 	}
 
