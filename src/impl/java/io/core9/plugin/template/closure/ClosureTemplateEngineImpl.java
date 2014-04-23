@@ -88,7 +88,7 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		if(renderer != null) {
 			result = renderer.setData(context).render();
 		} else {
-			renderer = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle());
+			renderer = VHOST_TOFUS.get(vhost).newRenderer(template).setMsgBundle(getStandardMsgBundle());
 			vhostCache.put(template, renderer);
 			result = renderer.setData(context).render();
 		}
@@ -134,7 +134,9 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		SoyTofu orgTofo = VHOST_TOFUS.get(vhost);
 		try {
 			this.VHOST_TOFUS.put(vhost, buildCollection.build().compileToTofu());
-			this.VHOST_CACHE.get(vhost).clear();
+			if(this.VHOST_CACHE.get(vhost) != null) {
+				this.VHOST_CACHE.get(vhost).clear();
+			}
 		} catch (SoySyntaxException e) {
 			this.VHOST_TOFUS.put(vhost, orgTofo);
 			e.printStackTrace();
