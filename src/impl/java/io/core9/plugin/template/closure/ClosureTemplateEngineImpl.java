@@ -1,13 +1,10 @@
 package io.core9.plugin.template.closure;
 
 import io.core9.plugin.server.VirtualHost;
-import io.core9.plugin.template.Template;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import net.xeoh.plugins.base.annotations.PluginImplementation;
@@ -24,8 +21,9 @@ import com.google.template.soy.xliffmsgplugin.XliffMsgPlugin;
 
 @PluginImplementation
 public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
+	// TODO, just look at it...
 	private final Map<String, Renderer> CACHE = new HashMap<String, Renderer>();
-	private final Map<VirtualHost, List<Template>> VHOST_TEMPLATES = new HashMap<VirtualHost, List<Template>>();
+	private final Map<VirtualHost, Map<String,String>> VHOST_TEMPLATES = new HashMap<VirtualHost, Map<String,String>>();
 	private final Map<VirtualHost, Map<String,Renderer>> VHOST_CACHE = new HashMap<VirtualHost, Map<String,Renderer>>();
 	private final Map<VirtualHost, SoyTofu> VHOST_TOFUS = new HashMap<VirtualHost, SoyTofu>();
 	private final Map<String, String> TEMPLATE_STRING_COLLECTION = new HashMap<String, String>();
@@ -127,9 +125,9 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			System.out.println("Adding to Soy templates build collection : " + template.getKey());
 			buildCollection.add(template.getValue(), template.getKey());
 		}
-		for(Template template : VHOST_TEMPLATES.get(vhost)) {
-			System.out.println("Adding to Soy templates build collection : " + template.getName());
-			buildCollection.add(template.getTemplate(), template.getName());
+		for(Map.Entry<String, String> template : VHOST_TEMPLATES.get(vhost).entrySet()) {
+			System.out.println("Adding to Soy templates build collection : " + template.getKey());
+			buildCollection.add(template.getValue(), template.getKey());
 		}
 		SoyTofu orgTofo = VHOST_TOFUS.get(vhost);
 		try {
@@ -163,15 +161,12 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	
 	@Override
 	public void addString(VirtualHost vhost, String identifier, String template) {
-		Template templ = new Template();
-		templ.setName(identifier);
-		templ.setTemplate(template);
-		List<Template> templates = VHOST_TEMPLATES.get(vhost);
+		Map<String,String> templates = VHOST_TEMPLATES.get(vhost);
 		if(templates == null) {
-			templates = new ArrayList<Template>();
+			templates = new HashMap<String,String>();
 			VHOST_TEMPLATES.put(vhost, templates);
 		}
-		templates.add(templ);
+		templates.put(identifier, template);
 	}
 
 	private SoyMsgBundle getStandardMsgBundle() {
