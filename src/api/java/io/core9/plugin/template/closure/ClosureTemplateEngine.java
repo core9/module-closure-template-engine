@@ -1,10 +1,8 @@
 package io.core9.plugin.template.closure;
 
 import io.core9.core.plugin.Core9Plugin;
+import io.core9.plugin.server.VirtualHost;
 import io.core9.plugin.template.TemplateEngine;
-
-import java.io.File;
-import java.io.IOException;
 
 import com.google.template.soy.base.SoySyntaxException;
 
@@ -13,13 +11,15 @@ public interface ClosureTemplateEngine extends TemplateEngine<String>, Core9Plug
 	/**
 	 * Creates the real tofu object, holding the compiled templates
 	 */
+	@Deprecated
 	void createCache() throws SoySyntaxException;
-
+	
 	/**
-	 * Adds files or folders to the template builder
-	 * @throws IOException 
+	 * Create the cache for a vhost
+	 * @param vhost
+	 * @throws SoySyntaxException
 	 */
-	void addFile(File file) throws IOException;
+	void createCache(VirtualHost vhost) throws SoySyntaxException;
 	
 	/**
 	 * Adds a string to the builder
@@ -28,4 +28,11 @@ public interface ClosureTemplateEngine extends TemplateEngine<String>, Core9Plug
 	 */
 	void addString(String identifier, String template);
 
+	/**
+	 * Adds a string to the builder
+	 * @param vhost
+	 * @param identifier
+	 * @param template
+	 */
+	void addString(VirtualHost vhost, String identifier, String template);
 }

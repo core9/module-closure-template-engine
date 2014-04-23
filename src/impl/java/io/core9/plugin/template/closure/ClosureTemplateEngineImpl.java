@@ -1,10 +1,13 @@
 package io.core9.plugin.template.closure;
 
-import java.io.File;
+import io.core9.plugin.server.VirtualHost;
+import io.core9.plugin.template.Template;
+
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.xeoh.plugins.base.annotations.PluginImplementation;
@@ -21,16 +24,28 @@ import com.google.template.soy.xliffmsgplugin.XliffMsgPlugin;
 
 @PluginImplementation
 public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
-	private final Map<String, Renderer> cache = new HashMap<String, Renderer>();
+	private final Map<String, Renderer> CACHE = new HashMap<String, Renderer>();
+	private final Map<VirtualHost, List<Template>> VHOST_TEMPLATES = new HashMap<VirtualHost, List<Template>>();
+	private final Map<VirtualHost, Map<String,Renderer>> VHOST_CACHE = new HashMap<VirtualHost, Map<String,Renderer>>();
+	private final Map<VirtualHost, SoyTofu> VHOST_TOFUS = new HashMap<VirtualHost, SoyTofu>();
+	private final Map<String, String> TEMPLATE_STRING_COLLECTION = new HashMap<String, String>();
+	@Deprecated
 	private SoyTofu tofu;
-	private Map<String, File> templateFileCollection = new HashMap<>();
-	private Map<String, String> templateStringCollection = new HashMap<>();
+	
+	
 
-	// FIXME blocking, use handler
+	@Override
+	@Deprecated
 	public String render(String templatename, Map<String, Object> context) {
 		context.remove("_id");
 		return compile(templatename, context);
 	};
+	
+	@Override
+	public String render(VirtualHost vhost, String template, Map<String, Object> context) {
+		context.remove("_id");
+		return compile(vhost, template, context);
+	}
 
 	/**
 	 * Gets a rendered template Adds the renderer to the cache if not already
@@ -39,31 +54,53 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	 * @param template
 	 * @return the renderer
 	 */
+	@Deprecated
 	public String compile(String template, Map<String, Object> context) {
 		String result = "";
 
-		Renderer renderer = cache.get(template);
+		Renderer renderer = CACHE.get(template);
 		//FIXME need a good way to deal with debug mode and caching on and of
 		if (renderer != null) {
 			result = renderer.setData(context).render();
 		} else {
 			result = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle()).setData(context).render();
-			cache.put(template, renderer);
+			CACHE.put(template, renderer);
+		}
+		return result;
+	}
+	
+	
+	public String compile(VirtualHost vhost, String template, Map<String, Object> context) {
+		String result = "";
+		
+		Renderer renderer = null;
+		Map<String,Renderer> vhostCache = VHOST_CACHE.get(vhost);
+		
+		// Get renderer if in cache, create new cache otherwise
+		if(vhostCache != null) {
+			renderer = vhostCache.get(template);
+		} else {
+			vhostCache = new HashMap<String, SoyTofu.Renderer>();
+			VHOST_CACHE.put(vhost, vhostCache);
+		}
+		
+		// Check if renderer is available, else put a new one in cache
+		if(renderer != null) {
+			result = renderer.setData(context).render();
+		} else {
+			renderer = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle());
+			vhostCache.put(template, renderer);
+			result = renderer.setData(context).render();
 		}
 		return result;
 	}
 
 	@Override
+	@Deprecated
 	public void createCache() throws SoySyntaxException {
 		SoyFileSet.Builder buildCollection = new SoyFileSet.Builder();
 
-		for (Map.Entry<String, File> template : templateFileCollection.entrySet()) {
-			for (File file : traverseDirectory(template.getValue())) {
-				buildCollection.add(file);
-			}
-		}
-
-		for (Map.Entry<String,String> template : templateStringCollection.entrySet()) {
+		for (Map.Entry<String,String> template : TEMPLATE_STRING_COLLECTION.entrySet()) {
 			if(template.getValue() != null && validateTemplate(template)){
 				
 				System.out.println("Adding to Soy templates build collection : " + template.getKey());
@@ -74,11 +111,34 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		SoyTofu orgTofo = tofu;
 		try {
 			tofu = buildCollection.build().compileToTofu();
-			this.cache.clear();
+			this.CACHE.clear();
 		} catch (SoySyntaxException e) {
 			tofu = orgTofo;
 			e.printStackTrace();
 			//throw e;
+		}
+	}
+	
+
+	@Override
+	public void createCache(VirtualHost vhost) throws SoySyntaxException {
+		SoyFileSet.Builder buildCollection = new SoyFileSet.Builder();
+		for(Map.Entry<String, String> template : TEMPLATE_STRING_COLLECTION.entrySet()) {
+			System.out.println("Adding to Soy templates build collection : " + template.getKey());
+			buildCollection.add(template.getValue(), template.getKey());
+		}
+		for(Template template : VHOST_TEMPLATES.get(vhost)) {
+			System.out.println("Adding to Soy templates build collection : " + template.getName());
+			buildCollection.add(template.getTemplate(), template.getName());
+		}
+		SoyTofu orgTofo = VHOST_TOFUS.get(vhost);
+		try {
+			this.VHOST_TOFUS.put(vhost, buildCollection.build().compileToTofu());
+			this.VHOST_CACHE.get(vhost).clear();
+		} catch (SoySyntaxException e) {
+			this.VHOST_TOFUS.put(vhost, orgTofo);
+			e.printStackTrace();
+			throw e;
 		}
 	}
 
@@ -95,13 +155,21 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	}
 
 	@Override
-	public void addFile(File file) throws IOException {
-		templateFileCollection.put(file.getCanonicalPath(), file);
-	}
-
-	@Override
 	public void addString(String identifier, String template) {
-		templateStringCollection.put(identifier, template);
+		TEMPLATE_STRING_COLLECTION.put(identifier, template);
+	}
+	
+	@Override
+	public void addString(VirtualHost vhost, String identifier, String template) {
+		Template templ = new Template();
+		templ.setName(identifier);
+		templ.setTemplate(template);
+		List<Template> templates = VHOST_TEMPLATES.get(vhost);
+		if(templates == null) {
+			templates = new ArrayList<Template>();
+			VHOST_TEMPLATES.put(vhost, templates);
+		}
+		templates.add(templ);
 	}
 
 	private SoyMsgBundle getStandardMsgBundle() {
@@ -118,25 +186,5 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			System.out.println("Error reading message resource \"nl-nl.xlf\".");
 		}
 		return msgBundle;
-	}
-
-	/**
-	 * Traverses a directory and adds all files to the result
-	 * 
-	 * @param folder
-	 * @return
-	 */
-	public static ArrayList<File> traverseDirectory(File file) {
-		ArrayList<File> result = new ArrayList<File>();
-		if (file.isDirectory()) {
-			for (File child : file.listFiles()) {
-				result.addAll(traverseDirectory(child));
-			}
-		} else {
-			if (file.getPath().endsWith(".soy")) {
-				result.add(file);
-			}
-		}
-		return result;
 	}
 }
