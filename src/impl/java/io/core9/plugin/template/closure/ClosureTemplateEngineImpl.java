@@ -86,7 +86,12 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		if(renderer != null) {
 			result = renderer.setData(context).render();
 		} else {
-			renderer = VHOST_TOFUS.get(vhost).newRenderer(template).setMsgBundle(getStandardMsgBundle());
+			SoyTofu tofu = VHOST_TOFUS.get(vhost);
+			// TODO Quickfix
+			if(tofu == null) {
+				tofu = this.tofu;
+			}
+			renderer = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle());
 			vhostCache.put(template, renderer);
 			result = renderer.setData(context).render();
 		}
