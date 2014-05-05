@@ -127,12 +127,18 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	public void createCache(VirtualHost vhost) throws SoySyntaxException {
 		SoyFileSet.Builder buildCollection = new SoyFileSet.Builder();
 		for(Map.Entry<String, String> template : TEMPLATE_STRING_COLLECTION.entrySet()) {
-			System.out.println("Adding to Soy templates build collection : " + template.getKey());
-			buildCollection.add(template.getValue(), template.getKey());
+			if(template.getValue() != null && validateTemplate(template)){
+				
+				System.out.println("Adding to Soy templates build collection : " + template.getKey());
+				buildCollection.add(template.getValue(), template.getKey());
+			}
 		}
 		for(Map.Entry<String, String> template : VHOST_TEMPLATES.get(vhost).entrySet()) {
-			System.out.println("Adding to Soy templates build collection : " + template.getKey());
-			buildCollection.add(template.getValue(), template.getKey());
+			if(template.getValue() != null && validateTemplate(template)){
+				
+				System.out.println("Adding to Soy templates build collection : " + template.getKey());
+				buildCollection.add(template.getValue(), template.getKey());
+			}
 		}
 		SoyTofu orgTofo = VHOST_TOFUS.get(vhost);
 		try {
