@@ -12,6 +12,7 @@ import net.xeoh.plugins.base.annotations.PluginImplementation;
 import com.google.common.io.Resources;
 import com.google.template.soy.SoyFileSet;
 import com.google.template.soy.base.SoySyntaxException;
+import com.google.template.soy.data.SoyMapData;
 import com.google.template.soy.msgs.SoyMsgBundle;
 import com.google.template.soy.msgs.SoyMsgBundleHandler;
 import com.google.template.soy.msgs.SoyMsgException;
@@ -68,6 +69,7 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	}
 	
 	
+	@SuppressWarnings("unchecked")
 	public String compile(VirtualHost vhost, String template, Map<String, Object> context) {
 		String result = "";
 		
@@ -84,6 +86,9 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		
 		// Check if renderer is available, else put a new one in cache
 		if(renderer != null) {
+			if(context.get("global") != null) {
+				renderer.setIjData(getIJData(vhost, (Map<String, Object>) context.get("global")));
+			}
 			result = renderer.setData(context).render();
 		} else {
 			SoyTofu tofu = VHOST_TOFUS.get(vhost);
@@ -93,6 +98,8 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			}
 			renderer = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle());
 			vhostCache.put(template, renderer);
+			// Set default global values
+			renderer.setIjData(getIJData(vhost, (Map<String, Object>) context.get("global")));
 			result = renderer.setData(context).render();
 		}
 		return result;
@@ -151,6 +158,17 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			e.printStackTrace();
 			throw e;
 		}
+	}
+	
+	private SoyMapData getIJData(VirtualHost vhost, Map<String,Object> globals) {
+		SoyMapData data;
+		if(globals == null) {
+			data = new SoyMapData();
+		} else {
+			data = new SoyMapData(globals);
+		}
+		data.put("hostname", vhost.getHostname());
+		return data;
 	}
 
 	private boolean validateTemplate(Map.Entry<String, String> template) {
