@@ -20,4 +20,14 @@ public interface TemplateEngine<T> {
 	 * @return
 	 */
 	T render(VirtualHost vhost, String template, Map<String,Object> context);
+
+	/**
+	 * Render a page with global values
+	 * @param vhost
+	 * @param template
+	 * @param context
+	 * @param global
+	 * @return
+	 */
+	T render(VirtualHost vhost, String template, Map<String, Object> context, Map<String, Object> global);
 }

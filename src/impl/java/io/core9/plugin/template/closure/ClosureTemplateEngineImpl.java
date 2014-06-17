@@ -12,7 +12,6 @@ import net.xeoh.plugins.base.annotations.PluginImplementation;
 import com.google.common.io.Resources;
 import com.google.template.soy.SoyFileSet;
 import com.google.template.soy.base.SoySyntaxException;
-import com.google.template.soy.data.SoyMapData;
 import com.google.template.soy.msgs.SoyMsgBundle;
 import com.google.template.soy.msgs.SoyMsgBundleHandler;
 import com.google.template.soy.msgs.SoyMsgException;
@@ -36,14 +35,12 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 	@Override
 	@Deprecated
 	public String render(String templatename, Map<String, Object> context) {
-		context.remove("_id");
 		return compile(templatename, context);
 	};
 	
 	@Override
 	public String render(VirtualHost vhost, String template, Map<String, Object> context) {
-		context.remove("_id");
-		return compile(vhost, template, context);
+		return render(vhost, template, context, null);
 	}
 
 	/**
@@ -68,9 +65,8 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		return result;
 	}
 	
-	
-	@SuppressWarnings("unchecked")
-	public String compile(VirtualHost vhost, String template, Map<String, Object> context) {
+	@Override
+	public String render(VirtualHost vhost, String template, Map<String, Object> context, Map<String,Object> global) {
 		String result = "";
 		
 		Renderer renderer = null;
@@ -86,8 +82,8 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 		
 		// Check if renderer is available, else put a new one in cache
 		if(renderer != null) {
-			if(context.get("global") != null) {
-				renderer.setIjData(getIJData(vhost, (Map<String, Object>) context.get("global")));
+			if(global != null) {
+				renderer.setIjData(global);
 			}
 			result = renderer.setData(context).render();
 		} else {
@@ -99,7 +95,7 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			renderer = tofu.newRenderer(template).setMsgBundle(getStandardMsgBundle());
 			vhostCache.put(template, renderer);
 			// Set default global values
-			renderer.setIjData(getIJData(vhost, (Map<String, Object>) context.get("global")));
+			renderer.setIjData(global);
 			result = renderer.setData(context).render();
 		}
 		return result;
@@ -158,17 +154,6 @@ public class ClosureTemplateEngineImpl implements ClosureTemplateEngine {
 			e.printStackTrace();
 			throw e;
 		}
-	}
-	
-	private SoyMapData getIJData(VirtualHost vhost, Map<String,Object> globals) {
-		SoyMapData data;
-		if(globals == null) {
-			data = new SoyMapData();
-		} else {
-			data = new SoyMapData(globals);
-		}
-		data.put("hostname", vhost.getHostname());
-		return data;
 	}
 
 	private boolean validateTemplate(Map.Entry<String, String> template) {
